@@ -1,0 +1,20 @@
+{
+    "name": "mobles/athos-api",
+    "type": "library",
+    "description": "Athos-API",
+    "homepage": "https://mobles.nl",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jannis Nikoy",
+            "email": "info@mobles.nl",
+            "homepage": "http://mobles.nl",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Athos\\API\\": "src/"
+        }
+    }
+}
