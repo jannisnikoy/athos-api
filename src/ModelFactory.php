@@ -12,9 +12,8 @@ namespace Athos\API;
 * @link     https://github.com/jannisnikoy/athos-api
 */
 
-interface Model {
-    public function insert();
-    public function update();
-    public function delete();
+interface ModelFactory {
+    public static function getAll();
+    public static function get($id);
 }
 ?>
