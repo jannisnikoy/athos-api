@@ -33,8 +33,8 @@ class Auth {
     * @return object Decoded JWT token
     */
     public function checkToken() {
-        if (!empty($this->headers['Authorization'])) {
-            if (preg_match('/Bearer\s(\S+)/', $this->headers['Authorization'], $matches)) {
+        if (!empty($this->headers['authorization'])) {
+            if (preg_match('/Bearer\s(\S+)/', $this->headers['authorization'], $matches)) {
                 $jwtToken = $matches[1];
             } else {
                 http_response_code(403);
@@ -47,7 +47,7 @@ class Auth {
             exit();
         }
 
-        $decoded = JWT::decode($jwtToken, file_get_contents($this->config->get('jwt_public_key')), array('RS256'));
+        $decoded = JWT::decode($jwtToken, new \Firebase\JWT\Key(file_get_contents($this->config->get('jwt_public_key')), 'RS256'));
 
         return $decoded;
     }
@@ -60,8 +60,8 @@ class Auth {
         $username = 'Guest' . $rand;
         $password = md5(($rand*time()/time().'secret').$username.md5(time().'secret'));
 
-        $db->query("INSERT INTO users(username, password) VALUES(?, ?)", $username, $password);
-        $userId = $db->insertId();
+        $this->db->query("INSERT INTO users(username, password) VALUES(?, ?)", $username, $password);
+        $userId = $this->db->insertId();
 
         return $this->getJwtToken($userId);
     }
