@@ -16,5 +16,8 @@
         "psr-4": {
             "Athos\\API\\": "src/"
         }
+    },
+    "require": {
+        "firebase/php-jwt": "^6.8"
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Athos\API;
 
+use \Firebase\JWT\JWT;
+
 /**
 * Authentication
 * Provides basic session-based authentication.
@@ -26,32 +28,81 @@ class Auth {
     }
 
     /**
-    * Verifies the incoming request has a valid session. Finding a match with the 
-    * provided X-Session-Id and mapping it to an existing user.
+    * Verifies the token validity and returns the decoded object.
     *
-    * @return object userId
+    * @return object Decoded JWT token
     */
-    public function checkSession(){
-        if (!isset($this->headers["x-session-id"])) {
+    public function checkToken() {
+        if (!empty($this->headers['Authorization'])) {
+            if (preg_match('/Bearer\s(\S+)/', $this->headers['Authorization'], $matches)) {
+                $jwtToken = $matches[1];
+            } else {
+                http_response_code(403);
+                echo json_encode(array('status' => 'FORBIDDEN'));
+                exit();
+            }
+        } else {
             http_response_code(403);
-            echo json_encode(array('status' => 'INVALID_SESSION'));
+            echo json_encode(array('status' => 'FORBIDDEN'));
             exit();
         }
 
-        $sessionId = $this->headers["x-session-id"];
+        $decoded = JWT::decode($jwtToken, file_get_contents($this->config->get('jwt_public_key')), array('RS256'));
 
-        $this->db->query("SELECT user_id FROM api_sessions WHERE session_id=?", $sessionId);
+        return $decoded;
+    }
+
+    /**
+     * Create a Guest user account and generates a JWT token
+     */
+    public function createGuestUser() {
+        $rand = rand(100000, 10000000);
+        $username = 'Guest' . $rand;
+        $password = md5(($rand*time()/time().'secret').$username.md5(time().'secret'));
+
+        $db->query("INSERT INTO users(username, password) VALUES(?, ?)", $username, $password);
+        $userId = $db->insertId();
+
+        return $this->getJwtToken($userId);
+    }
+
+    /**
+    * Attempts to log in the user and generate a JWT token.
+    *
+    * @param string $username
+    * @param string $password
+    * @return JWT token if successful, otherwise false.
+    */
+    public function login(string $username, string $password) {
+        $this->db->query("SELECT * FROM users WHERE username=? AND password=? AND isActive=1", $username, hash('sha256', $password));
 
         if (!$this->db->hasRows()) {
-            http_response_code(403);
-            echo json_encode(array('status' => 'INVALID_SESSION'));
-            exit();
+            return false;
         }
 
         $row = $this->db->getRow();
-        $this->db->query("UPDATE users SET lastActiveAt=current_timestamp() WHERE id=?", $row->user_id);
-        $this->db->query("UPDATE api_sessions SET user_agent=? WHERE session_id=?", $_SERVER['HTTP_USER_AGENT'], $sessionId);
-        return $row->user_id;
+
+        return $this->getJwtToken($row->id);
+    }
+
+    //
+    // Private methods
+    //
+
+    /**
+    * Created a new JWT token for the userId provided.
+    *
+    * @param string userId Id of the user
+    * @return object Encoded JWT token
+    */
+    private function getJwtToken(string $userId) {
+        $arClaim['iss'] = $_SERVER['HTTP_HOST'];
+        $arClaim['iat'] = time();
+        $arClaim['userId'] = $userId;
+
+        $key = file_get_contents($this->config->get('jwt_private_key'));
+
+        return JWT::encode($arClaim, $key, 'RS256');
     }
 }
 ?>
