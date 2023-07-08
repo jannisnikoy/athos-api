@@ -48,6 +48,22 @@ class Auth {
         }
 
         $decoded = JWT::decode($jwtToken, new \Firebase\JWT\Key(file_get_contents($this->config->get('jwt_public_key')), 'RS256'));
+        
+        $this->db->query("SELECT * FROM users WHERE id=?", $decoded->userId);
+        if($this->db->hasRows()) {
+            $user = $this->db->getRow();
+            if($user->active == 0) {
+                http_response_code(403);
+                echo json_encode(array('status' => 'FORBIDDEN'));
+                exit();
+            }
+        } else {
+            http_response_code(404);
+            echo json_encode(array('status' => 'NOT_FOUND'));
+            exit();
+        }
+
+        $this->db->query("UPDATE users SET userAgent=?, lastActiveAt=NOW() WHERE id=?", $_SERVER['HTTP_USER_AGENT'], $decoded->userId);
 
         return $decoded;
     }
@@ -74,7 +90,7 @@ class Auth {
     * @return JWT token if successful, otherwise false.
     */
     public function login(string $username, string $password) {
-        $this->db->query("SELECT * FROM users WHERE username=? AND password=? AND isActive=1", $username, hash('sha256', $password));
+        $this->db->query("SELECT * FROM users WHERE username=? AND password=? AND active=1", $username, hash('sha256', $password));
 
         if (!$this->db->hasRows()) {
             return false;

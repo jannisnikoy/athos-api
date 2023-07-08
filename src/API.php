@@ -92,7 +92,7 @@ class API {
     */
     private function hasCorrectHeaders(): bool {
         header('Content-Type: application/json');
-        $this->headers = getallheaders();
+        $this->headers = array_change_key_case(getallheaders());
 
         $requireAcceptHeader = $this->config->get('require_accept_header');
 
@@ -100,8 +100,8 @@ class API {
             return true;
         }
 
-        if (isset($this->headers['Accept'])) {
-            if ($this->headers['Accept'] != $this->config->get('accept_header')) {
+        if (isset($this->headers['accept'])) {
+            if ($this->headers['accept'] != $this->config->get('accept_header')) {
                 http_response_code(403);
                 echo json_encode(array('status' => 'FORBIDDEN'));
                 return false;
